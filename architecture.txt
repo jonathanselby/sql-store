@@ -1,0 +1,29 @@
+SQL STORE — v0.1 / LOCKED EDD v0.2
+
+              GARAGE APPLICATION
+    business schemas, queries, permissions
+                      |
+                database/sql
+                      |
+          +-----------+-----------+
+          |     SQL STORE         |
+          |  open/config/health   |
+          |  migration/readiness  |
+          |  outbox persistence   |
+          |  test / backup hooks  |
+          +-----------+-----------+
+                      |
+           +----------+----------+
+           |                     |
+       SQLite file           PostgreSQL
+       single-node           shared enterprise
+
+ Application business transaction:
+   domain UPDATE/INSERT + outbox INSERT -> COMMIT
+
+ Application-owned publisher:
+   claim pending -> Event Stream -> durable receipt -> mark published
+                  (outside DB transaction)
+
+ No ORM, SQL translation, distributed transaction, retry daemon,
+ SQL framework, persistent event broker or per-query intermediary.
