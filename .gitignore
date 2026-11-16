@@ -1,0 +1,13 @@
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.test
+*.out
+coverage.out
+.env
+.env.*
+!.env.example
+.DS_Store
