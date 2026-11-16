@@ -18,7 +18,8 @@ func BackupSQLite(ctx context.Context, db *sql.DB, destination string) error {
 	if err != nil {
 		return ErrConfiguration
 	}
-	if _, err := os.Lstat(dest); err == nil {
+	_, err = os.Lstat(dest)
+	if err == nil {
 		return ErrConfiguration
 	}
 	if !errors.Is(err, os.ErrNotExist) {
