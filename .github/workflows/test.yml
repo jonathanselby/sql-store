@@ -1,0 +1,80 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sqlstore
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: sqlstore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sqlstore -d sqlstore_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      SQLSTORE_POSTGRES_TEST_URL: postgres://sqlstore:test-only-password@127.0.0.1:5432/sqlstore_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.0'
+          cache: false
+      - name: Prepare module checksums
+        run: |
+          go mod tidy
+          go mod verify
+          if git ls-files --error-unmatch go.sum >/dev/null 2>&1; then
+            git diff --exit-code -- go.mod go.sum
+          else
+            echo 'First publication: canonical go.mod/go.sum are provided as a CI artifact.'
+          fi
+      - name: Upload canonical module files for source commit
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-module-candidate
+          path: |
+            go.mod
+            go.sum
+          if-no-files-found: error
+      - name: Format
+        run: |
+          test -z "$(gofmt -l $(find . -name '*.go' -type f))"
+      - name: Vet
+        run: go vet ./...
+      - name: Unit and real-engine integration
+        run: go test -count=1 -v ./...
+      - name: Race
+        run: go test -race -count=1 ./...
+      - name: Native build
+        run: go build ./...
+      - name: Linux ARM64 build
+        env:
+          GOOS: linux
+          GOARCH: arm64
+          CGO_ENABLED: '0'
+        run: go build ./...
+      - name: Version + module dependency audit
+        run: |
+          test "$(tr -d '\n' < VERSION)" = "0.1.0"
+          ! grep -E 'gorm|entgo|sqlx|squirrel|sqlboiler' go.mod
+      - name: PostgreSQL backup integration prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16 || sudo apt-get install -y postgresql-client
+      - name: Database backup / restore evidence
+        run: go test -run '^TestPostgresBackupRestore$' -count=1 -v .
+      - name: Benchmark evidence
+        run: go test -run '^$' -bench '^BenchmarkDirectSQLVsSQLStore$' -benchtime=100x ./...
