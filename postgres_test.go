@@ -197,7 +197,7 @@ func TestPostgresBackupRestore(t *testing.T) {
 	if _, err := f.DB.ExecContext(ctx, "DELETE FROM items WHERE id='backup'"); err != nil {
 		t.Fatal(err)
 	}
-	restore := exec.CommandContext(ctx, "pg_restore", "--clean", "--if-exists", target)
+	restore := exec.CommandContext(ctx, "pg_restore", "--clean", "--if-exists", "--dbname="+strings.TrimPrefix(conn.Path, "/"), target)
 	restore.Env = clientEnv
 	if output, err := restore.CombinedOutput(); err != nil {
 		t.Fatalf("pg_restore failed: %v %s", err, string(output))
