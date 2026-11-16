@@ -76,5 +76,9 @@ jobs:
           sudo apt-get install -y postgresql-client-16 || sudo apt-get install -y postgresql-client
       - name: Database backup / restore evidence
         run: go test -run '^TestPostgresBackupRestore$' -count=1 -v .
+      - name: Example execution — SQLite and PostgreSQL
+        run: |
+          go run ./examples/basic
+          SQLSTORE_EXAMPLE_POSTGRES_URL="$SQLSTORE_POSTGRES_TEST_URL" go run ./examples/basic
       - name: Benchmark evidence
         run: go test -run '^$' -bench '^BenchmarkDirectSQLVsSQLStore$' -benchtime=100x ./...
